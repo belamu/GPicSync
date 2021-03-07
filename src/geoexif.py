@@ -6,12 +6,12 @@
 # This script is released under the GPL license v2
 #
 # francois.schnell (http://francois.schnell.free.fr)
-#                        
+#
 # Contributors, see: https://github.com/metadirective/GPicSync/graphs/contributors
 #
 # This script is released under the GPL license version 2 license
-#  
-# This script use the GPL exiftool.exe  app. see: 
+#
+# This script use the GPL exiftool.exe  app. see:
 # http://www.sno.phy.queensu.ca/%7Ephil/exiftool/
 ###############################################################################
 
@@ -19,7 +19,7 @@ import os,sys
 
 class GeoExif(object):
     """
-    A class to read and write few EXIF tags in .jpg pictures which can be 
+    A class to read and write few EXIF tags in .jpg pictures which can be
     usefull for geolalisation scripts.
     """
     def __init__(self,picture):
@@ -36,12 +36,12 @@ class GeoExif(object):
             self.exifcmd = 'exiftool.exe'
         else:
             self.exifcmd = 'exiftool'
-        
+
     def readExifAll(self):
         """read all exif tags and return a string of the result"""
         result=os.popen('%s -n "%s"' % (self.exifcmd, self.picPath)).read()
         return result
-    
+
     def readDateTime(self):
         """
         Read the time and date when the picture was taken if available
@@ -114,22 +114,35 @@ class GeoExif(object):
         -GPSLongitude -GPSLongitudeRef   "%s" ' \
         % (self.exifcmd, self.picPath)).read().split("\n")
         print (result)
+        # now:
+        # result[0] = Latitude
+        # [1] = Latitude Ref (N/S)
+        # [2] = Longitude
+        # [3] = Longitude Ref (W/E)
         if len(result)>=4:
-            result[0]=result[0].split(":")[1].strip()
-            try:
-                latDecimal=result[0].split(".")[1][0:]
-            except:
-                latDecimal="0"
-            result[0]=result[0].split(".")[0]+"."+latDecimal
-            result[1]=result[1].split(":")[1].strip()
-            result[2]=result[2].split(":")[1].strip()
-            try:
-                longDecimal=result[2].split(".")[1][0:]
-            except:
-                longDecimal="0"
-            result[2]=result[2].split(".")[0]+"."+longDecimal
-            result[3]=result[3].split(":")[1].strip()
-            latlong= result[1]+result[0]+" "+result[3]+result[2]
+            for i in range(4):
+                result[i] = result[i].split(':')[1].strip()
+                # [0] = Latitude as string containing number
+                # [1] = N/S
+                # [2] = Latitude as string containing number
+                # [3] = W/E
+            if len(result[0]) == 0 or len(result[2]) == 0:
+                latlong = None
+            else:
+                try:
+                    latDecimal=result[0].split(".")[1][0:]
+                except:
+                    latDecimal="0"
+                result[0]=result[0].split(".")[0]+"."+latDecimal
+                # [0] = Latitude as string containing number, guaranteed with .
+                try:
+                    longDecimal=result[2].split(".")[1][0:]
+                except:
+                    longDecimal="0"
+                result[2]=result[2].split(".")[0]+"."+longDecimal
+                # [2] = Latitude as string containing number, guaranteed with .
+                latlong= result[1]+result[0]+" "+result[3]+result[2]
+                # N/Slatitude W/Elongitude
         else:
             latlong=None
         print (latlong)
@@ -206,9 +219,9 @@ class GeoExif(object):
                 os.popen('%s -m -overwrite_original -n -GPSLongitude=%s -GPSLatitude=%s \
                 -GPSLongitudeRef=%s -GPSLatitudeRef=%s -GPSAltitudeRef=%s -GPSAltitude=%s %s "%s"'\
                 %(self.exifcmd, long,lat,longRef,latRef,altRef,elevation,option,self.picPath))
-            
+
 if __name__=="__main__":
-    
+
     mypicture=GeoExif("test.jpg")
 #    exif=mypicture.readExifAll()
 #    mypicture.writeLongitude(7.222333)
