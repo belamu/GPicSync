@@ -49,10 +49,11 @@ class GeoExif(object):
         like  ['2007:02:12', '16:09:10']
         """
         #result=os.popen('exiftool.exe -CreateDate "%s"' % self.picPath).read()
-        result=os.popen('%s -DateTimeOriginal "%s"' % (self.exifcmd, self.picPath)).read()
+        # result=os.popen('%s -DateTimeOriginal "%s"' % (self.exifcmd, self.picPath)).read()
+        result=os.popen('%s -CreateDate "%s"' % (self.exifcmd, self.picPath)).read()
         timeDate= [result[34:44],result[45:53]]
         return timeDate
-    
+
     def readDateTimeSize(self):
         """
         Read the time / date when the picture was taken (if available)
@@ -60,7 +61,8 @@ class GeoExif(object):
         Returns a list containing strings[date,time,width,height]
         like  ['2007:02:12', '16:09:10','800','600']
         """
-        answer=os.popen('%s -DateTimeOriginal -ImageSize "%s"' % (self.exifcmd, self.picPath)).read()
+        # answer=os.popen('%s -DateTimeOriginal -ImageSize "%s"' % (self.exifcmd, self.picPath)).read()
+        answer=os.popen('%s -CreateDate -ImageSize "%s"' % (self.exifcmd, self.picPath)).read()
         #print "readDateTimeSize answer", answer
         if "Date" in answer:
             date=answer[34:44]
@@ -76,29 +78,36 @@ class GeoExif(object):
             width=640
             height=480
         return [date,time,width,height]
-    
+
     def readLatitude(self):
         """read the latitute tag is available and return a float"""
         result=os.popen('%s -n -GPSLatitude -GPSLatitudeRef  "%s"  ' % (self.exifcmd, self.picPath)).read().split("\n")
         #print result
         if len(result)>1:
-            latitude=float(result[0].split(":")[1])
+            try:
+                latitude=float(result[0].split(":")[1])
+            except ValueError as floatconverror:
+                # could not convert string to float
+                return "None"
             #print "latitude= ",latitude
             return latitude
         else:
             return "None"
-        
+
     def readLongitude(self):
         """read the longitude tag if available"""
         result=os.popen('%s -n -GPSLongitude -GPSLongitudeRef   "%s" ' % (self.exifcmd, self.picPath)).read().split("\n")
         #print result
         if len(result)>1:
-            longitude=float(result[0].split(":")[1])
+            try:
+                longitude=float(result[0].split(":")[1])
+            except ValueError:
+                return "None"
             #print "longitude= ",longitude
             return longitude
         else:
             return "None"
-    
+
     def readLatLong(self):
         """read latitude AND longitude at the same time"""
         result=os.popen('%s  -n -GPSLatitude -GPSLatitudeRef \
@@ -141,9 +150,9 @@ class GeoExif(object):
         if float(lat) >= 0:
             os.popen('%s -m -GPSLatitudeRef="N" %s "%s" '% (self.exifcmd, option, self.picPath))
         else:
-            os.popen('%s -m -GPSLatitudeRef="S" %s "%s" '% (self.exifcmd, option, self.picPath))    
+            os.popen('%s -m -GPSLatitudeRef="S" %s "%s" '% (self.exifcmd, option, self.picPath))
         os.popen('%s  -m -GPSLatitude=%s "%s"'%(self.exifcmd, lat,self.picPath))
-        
+
     def writeLongitude(self,long):
         """
         write the longitude value given in argument in the EXIF
@@ -160,10 +169,10 @@ class GeoExif(object):
         else:
             os.popen('%s -m -GPSLongitudeRef="W" %s "%s"' % (self.exifcmd, option, self.picPath))
         os.popen('%s -m -GPSLongitude=%s  "%s" '% (self.exifcmd, long,self.picPath))
-        
+
     def writeLatLong(self,lat,long,latRef,longRef,backup,elevation="None"):
         """Write both latitudeRef/latitude and longitudeRef/longitude in EXIF"""
-        option='"-DateTimeOriginal>FileModifyDate"'
+        option='"-CreateDate>FileModifyDate"'
         if self.xmpOption==True:
             if(self.sidecarFile != ""):
                 option = option + " -o '"+self.sidecarFile+"'"
@@ -171,14 +180,14 @@ class GeoExif(object):
         if float(long)<0:long=str(abs(float(long)))
         if float(lat)<0:lat=str(abs(float(lat)))
         altRef=0 #"Above Sea Level"
-        
+
         if elevation!="None":
-            if float(elevation)<0: 
+            if float(elevation)<0:
                 altRef=1 #"Below Sea Level"
                 elevation=str(abs(float(elevation)))
         #print ">>> altRef=",altRef
         #print ">>> elevation ", elevation
-            
+
         if backup==True:
             if elevation=="None":
                 os.popen('%s -n -m -GPSLongitude=%s -GPSLatitude=%s \
