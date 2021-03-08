@@ -43,7 +43,8 @@ class GpicSync(object):
     A class to manage the geolocalisation from a .gpx file.
     """
     def __init__(self,gpxFile,tcam_l="00:00:00",tgps_l="00:00:00",UTCoffset=0,timezone=None,
-    dateProcess=True,timerange=3600,backup=True,interpolation=False,qr_time_image=None):
+    dateProcess=True,timerange=3600,backup=True,interpolation=False,qr_time_image=None,
+    overwrite=False):
         """Extracts data from the gpx file and compute local offset duration"""
         myGpx=Gpx(gpxFile)
         self.track=myGpx.extract()
@@ -64,6 +65,7 @@ class GpicSync(object):
         self.interpolation=interpolation
         if qr_time_image is None:
             print ("local UTC Offset (seconds)= ", self.localOffset)
+        self.overwrite=overwrite
 
     def parseQrTime(self,qr_time_images):
         import zbar
@@ -109,12 +111,17 @@ class GpicSync(object):
         """
         Find the nearest trackpoint from the recorded time in the picture.
         This method returns now a list [response,latitude,longitude]
-        where 'response' is the general reslult to be show to the user
+        where 'response' is the general result to be shown to the user
         latitude and longitude are strings (+- decimal degrees) to be use
         by other part of the program calling this method.
         """
         interpolation=True # To use or not an interpolation mode(instead of nearest point)
         pic=GeoExif(picture)
+        if not self.overwrite:
+            if pic.readLatLong() is not None:
+                print("Location already set. Do not overwrite it.")
+                return ["Location already set. Do not overwrite it.",
+                        pic.readLatitude(), pic.readLongitude()]
         picDateTimeSize=pic.readDateTimeSize()
         if picDateTimeSize[0]=="nodate":
             return [" : WARNING: DIDN'T GEOCODE, no Date/Time Original in this picture.",
@@ -271,6 +278,8 @@ if __name__=="__main__":
      help="Max time gap in seconds between photo timestamp and a candidate \
      location's timestamp - by default considers only locations within 1h \
      (3600s) of the photo timestamp")
+    parser.add_option("--overwrite", dest="overwrite",
+                      help="Overwrite geolocations of images if already existing.")
 
     (options,args)=parser.parse_args()
 
@@ -304,7 +313,7 @@ if __name__=="__main__":
 
     geo=GpicSync(gpxFile=options.gpx,
     tcam_l=options.tcam,tgps_l=options.tgps,UTCoffset=float(options.offset),timerange=int(options.timerange),timezone=options.timezone,
-    qr_time_image=options.qr_time_image)
+    qr_time_image=options.qr_time_image,overwrite=options.overwrite)
 
     files = list(getFileList(options.dir))
 
